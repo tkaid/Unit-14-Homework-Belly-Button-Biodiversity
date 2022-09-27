@@ -1,101 +1,100 @@
-import os
-
-import pandas as pd
-import numpy as np
-
-import sqlalchemy
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
-
-from flask import Flask, jsonify, render_template
-from flask_sqlalchemy import SQLAlchemy
-
-app = Flask(__name__)
+var drawChart = function(x_data, y_data, hoverText, metadata) {
 
 
-#################################################
-# Database Setup
-#################################################
+  var metadata_panel = d3.select("#sample-metadata");
+  metadata_panel.html("");
+  Object.entries(metadata).forEach(([key, value]) => {
+      metadata_panel.append("p").text(`${key}: ${value}`);
+  });
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///db/bellybutton.sqlite"
-db = SQLAlchemy(app)
+  var trace = {
+      x: x_data,
+      y: y_data,
+      text: hoverText,
+      type: 'bar',
+      orientation: 'h'
+  };
 
-# reflect an existing database into a new model
-Base = automap_base()
-# reflect the tables
-Base.prepare(db.engine, reflect=True)
+  var data = [trace];
 
-# Save references to each table
-Samples_Metadata = Base.classes.sample_metadata
-Samples = Base.classes.samples
+  Plotly.newPlot('bar', data);
 
+  var trace2 = {
+      x: x_data,
+      y: y_data,
+      text: hoverText,
+      mode: 'markers',
+      marker: {
+          size: y_data,
+          color: x_data
+      }
+  };
 
-@app.route("/")
-def index():
-    """Return the homepage."""
-    return render_template("index.html")
+  var data2 = [trace2];
 
-
-@app.route("/names")
-def names():
-    """Return a list of sample names."""
-
-    # Use Pandas to perform the sql query
-    stmt = db.session.query(Samples).statement
-    df = pd.read_sql_query(stmt, db.session.bind)
-
-    # Return a list of the column names (sample names)
-    return jsonify(list(df.columns)[2:])
-
-
-@app.route("/metadata/<sample>")
-def sample_metadata(sample):
-    """Return the MetaData for a given sample."""
-    sel = [
-        Samples_Metadata.sample,
-        Samples_Metadata.ETHNICITY,
-        Samples_Metadata.GENDER,
-        Samples_Metadata.AGE,
-        Samples_Metadata.LOCATION,
-        Samples_Metadata.BBTYPE,
-        Samples_Metadata.WFREQ,
-    ]
-
-    results = db.session.query(*sel).filter(Samples_Metadata.sample == sample).all()
-
-    # Create a dictionary entry for each row of metadata information
-    sample_metadata = {}
-    for result in results:
-        sample_metadata["sample"] = result[0]
-        sample_metadata["ETHNICITY"] = result[1]
-        sample_metadata["GENDER"] = result[2]
-        sample_metadata["AGE"] = result[3]
-        sample_metadata["LOCATION"] = result[4]
-        sample_metadata["BBTYPE"] = result[5]
-        sample_metadata["WFREQ"] = result[6]
-
-    print(sample_metadata)
-    return jsonify(sample_metadata)
+  Plotly.newPlot('bubble', data2);
 
 
-@app.route("/samples/<sample>")
-def samples(sample):
-    """Return `otu_ids`, `otu_labels`,and `sample_values`."""
-    stmt = db.session.query(Samples).statement
-    df = pd.read_sql_query(stmt, db.session.bind)
+};
 
-    # Filter the data based on the sample number and
-    # only keep rows with values above 1
-    sample_data = df.loc[df[sample] > 1, ["otu_id", "otu_label", sample]]
-    # Format the data to send as json
-    data = {
-        "otu_ids": sample_data.otu_id.values.tolist(),
-        "sample_values": sample_data[sample].values.tolist(),
-        "otu_labels": sample_data.otu_label.tolist(),
-    }
-    return jsonify(data)
+var populateDropdown = function(names) {
+
+  var selectTag = d3.select("#selDataset");
+  var options = selectTag.selectAll('option').data(names);
+
+  options.enter()
+      .append('option')
+      .attr('value', function(d) {
+          return d;
+      })
+      .text(function(d) {
+          return d;
+      });
+
+};
+
+var optionChanged = function(newValue) {
+
+  d3.json("data/samples.json").then(function(data) {
+
+  sample_new = data["samples"].filter(function(sample) {
+
+      return sample.id == newValue;
+
+  });
+  
+  metadata_new = data["metadata"].filter(function(metadata) {
+
+      return metadata.id == newValue;
+
+  });
+  
+  
+  x_data = sample_new[0]["otu_ids"];
+  y_data = sample_new[0]["sample_values"];
+  hoverText = sample_new[0]["otu_labels"];
+  
+  console.log(x_data);
+  console.log(y_data);
+  console.log(hoverText);
+  
+  drawChart(x_data, y_data, hoverText, metadata_new[0]);
+  });
+};
+
+d3.json("data/samples.json").then(function(data) {
+
+  //Populate dropdown with names
+  populateDropdown(data["names"]);
+
+  //Populate the page with the first value
+  x_data = data["samples"][0]["otu_ids"];
+  y_data = data["samples"][0]["sample_values"];
+  hoverText = data["samples"][0]["otu_labels"];
+  metadata = data["metadata"][0];
+
+  //Draw the chart on load
+  drawChart(x_data, y_data, hoverText, metadata);
 
 
-if __name__ == "__main__":
-    app.run()
+});
