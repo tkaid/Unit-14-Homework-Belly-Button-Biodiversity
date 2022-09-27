@@ -1,74 +1,119 @@
-// Dropdown menu Function 
-function optionChanged(selectedID){
-  console.log(selectedID);
- 
-// json file for the data
- d3.json("samples.json").then((data) => {
-   var metadata= data.metadata;
-   var resultsarray= metadata.filter(sampleobject => 
-     sampleobject.id == sample);
-   var result= resultsarray[0]
-   var panel = d3.select("#sample-metadata");
-   panel.html("");
-   Object.entries(result).forEach(([key, value]) => {
-     panel.append("h6").text(`${key}: ${value}`);
-   });
+function buildMetadata(sample) {
+  d3.json("samples.json").then((data) => {
+    var metadata= data.metadata;
+    var resultsarray= metadata.filter(sampleobject => 
+      sampleobject.id == sample);
+    var result= resultsarray[0]
+    var panel = d3.select("#sample-metadata");
+    panel.html("");
+    Object.entries(result).forEach(([key, value]) => {
+      panel.append("h6").text(`${key}: ${value}`);
+    });
 
-   function buildCharts(sample) {
-
-    // Use `d3.json` to fetch the sample data for the plots
-    d3.json("samples.json").then((data) => {
-      var samples= data.samples;
-      var resultsarray= samples.filter(sampleobject => 
-          sampleobject.id == sample);
-      var result= resultsarray[0]
-    
-      var ids = result.otu_ids;
-      var labels = result.otu_labels;
-      var values = result.sample_values;
-
- // Bubble Chart 
- const trace1 = {
-   x: otuID1,
-   y: sampleValue1,
-   mode: 'markers',
-   marker: {
-     color: otuID1,
-     
-     size: sampleValue1
-   }
- },
- layout1 = {
-   title: '<b>Bubble Chart For Each Sample</b>',
-   xaxis: {title: 'OTU ID'},
-   yaxis: {title: 'Number of Samples Collected'},
-   showlegend: false,
-   height: 800,
-   width: 1800
-   };
-// Ploting the Data
-Plotly.newPlot('bubble', [trace1], layout1);
+  //buildGauge(result.wfreq)
 
 
-// Bar Chart 
-    const yAxis = otuID.map(item => 'OTU' + " " + item);
-       const trace = {
-       y: yAxis,
-       x: sampleValue,
-       type: 'bar',
-       orientation: "h",
-       text:  otuLabels,
-       marker: {
-          color: 'rgb(154, 140, 152)',
-          line: {
-             width: 3
-         }
+
+  });
+}
+
+//function buildGauge(wfreq) {}
+
+function buildCharts(sample) {
+
+// Use `d3.json` to fetch the sample data for the plots
+d3.json("samples.json").then((data) => {
+  var samples= data.samples;
+  var resultsarray= samples.filter(sampleobject => 
+      sampleobject.id == sample);
+  var result= resultsarray[0]
+
+  var ids = result.otu_ids;
+  var labels = result.otu_labels;
+  var values = result.sample_values;
+
+//------------------------------------------------------//
+//------------------------------------------------------//
+          // Build a BUBBLE Chart 
+//------------------------------------------------------//
+//------------------------------------------------------//
+
+  var LayoutBubble = {
+    margin: { t: 0 },
+    xaxis: { title: "OTU ID" },
+    hovermode: "closest",
+    };
+
+    var DataBubble = [ 
+    {
+      x: ids,
+      y: values,
+      text: labels,
+      mode: "markers",
+      marker: {
+        color: ids,
+        size: values,
         }
-       },
-       layout = {
-       title: 'Top 10 Operational Taxonomic Units (OTU)/Individual',
-       xaxis: {title: 'Number of Samples Collected'},
-       yaxis: {title: 'OTU ID'}
-       };
-// Ploting the Data
-Plotly.newPlot('bar', [trace], layout,  {responsive: true}); 
+    }
+  ];
+
+  Plotly.newPlot("bubble", DataBubble, LayoutBubble);
+
+
+//---------------------------------------------------------//
+//---------------------------------------------------------//
+              //  Build a BAR Chart
+//---------------------------------------------------------//  
+//---------------------------------------------------------// 
+  var bar_data =[
+    {
+      y:ids.slice(0, 10).map(otuID => `OTU ${otuID}`).reverse(),
+      x:values.slice(0,10).reverse(),
+      text:labels.slice(0,10).reverse(),
+      type:"bar",
+      orientation:"h"
+
+    }
+  ];
+
+  var barLayout = {
+    title: "Top 10 Bacteria Cultures Found",
+    margin: { t: 30, l: 150 }
+  };
+
+  Plotly.newPlot("bar", bar_data, barLayout);
+});
+}
+ 
+
+function init() {
+// Grab a reference to the dropdown select element
+var selector = d3.select("#selDataset");
+
+// Use the list of sample names to populate the select options
+d3.json("samples.json").then((data) => {
+  var sampleNames = data.names;
+  sampleNames.forEach((sample) => {
+    selector
+      .append("option")
+      .text(sample)
+      .property("value", sample);
+  });
+
+  // Use the first sample from the list to build the initial plots
+  const firstSample = sampleNames[0];
+  buildCharts(firstSample);
+  buildMetadata(firstSample);
+});
+}
+
+function optionChanged(newSample) {
+// Fetch new data each time a new sample is selected
+buildCharts(newSample);
+buildMetadata(newSample);
+}
+
+
+
+// Initialize the dashboard
+init();
