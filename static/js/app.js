@@ -1,5 +1,5 @@
 //Crearting the selectData Opition
-d3.json("samples.json").then(function(incomingData) {
+d3.json("https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json").then(function(incomingData) {
     
   //Populate the dropdown
   d3.select("#selDataset")
@@ -93,7 +93,7 @@ function CreateMeta(data) {
 
 // This 'master function' loads in the json data and executes each function so all charts are populated.
 function optionChanged(value) {
-  d3.json("samples.json").then(function(incomingData) {
+  d3.json("https://2u-data-curriculum-team.s3.amazonaws.com/dataviz-classroom/v1.1/14-Interactive-Web-Visualizations/02-Homework/samples.json").then(function(incomingData) {
       var metadata = incomingData.metadata.filter(data => data.id ==value);
       console.log(metadata);
 
